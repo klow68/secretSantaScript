@@ -13,45 +13,25 @@ csv_nom = 2
 csv_email = 3
 csv_adresse = 4
 
-#### GLOBAL VARIABLES ####
-
-# list of all participant with all there informations
-p_contacts = []
-# list of id/foyer by participant
-p_id_foyer = []
-# CSV column names
-p_column_name = []
-# secret santa result by id [id sender, id gift]
-p_secret_santa_res_id = []
-
 # email to send all email
 p_email_secret_santa = "<your@email.com>"
 
 # open csv file and put it in the global variable p_contacts
 def open_csv():
-    global p_contacts
     with open("./res/contacts.csv", newline="") as csvfile:
-        contact = csv.reader(csvfile, delimiter=";", quotechar="|")
-        for row in contact:
-            p_contacts += [row]
+        csv_data = csv.reader(csvfile, delimiter=";", quotechar="|")
+        header = next(csv_data)
+        contacts = [row for row in csv_data]
+    return header, contacts
 
 
-def cut_first_contacts_line():
-    global p_contacts, p_column_name
-    p_column_name = p_contacts.pop(0)
-
-
-def get_all_id_foyer():
-    global p_contacts, p_id_foyer, csv_id, csv_foyer
-    for row in p_contacts:
-        p_id_foyer += [[row[csv_id], row[csv_foyer]]]
+def get_all_id_foyer(contacts):
+    return [[contact[csv_id], contact[csv_foyer]] for contact in contacts]
 
 
 # function to found a contact to offer a gift
 # return id or -1
 def gift_to_offer(contact, contacts):
-    global csv_foyer, csv_id
-
     # exit condition : if no contact anymore
     if len(contacts) == 0:
         return None
@@ -68,26 +48,24 @@ def gift_to_offer(contact, contacts):
         gift_to_offer(contact, contacts)
 
 
-def secret_santa():
-    global p_id_foyer, p_secret_santa_res_id, csv_foyer, csv_id
-
+def secret_santa(foyers):
     secret_santa_finished = False
 
     while not secret_santa_finished:
         # Init
-        cp_id_foyer = p_id_foyer.copy()
+        cp_id_foyer = foyers.copy()
         p_secret_santa_res_id = []
 
         # for all contact found a contact to offer a gift not in your foyer
-        for contact in p_id_foyer:
-            id = gift_to_offer(contact, cp_id_foyer.copy())
+        for contact in foyers:
+            foyer_id = gift_to_offer(contact, cp_id_foyer.copy())
 
             # result found
-            if id != None:
+            if foyer_id != None:
                 # p_secret_santa_res_id += [[contact, id]]
-                p_secret_santa_res_id += [[contact[csv_id], id[csv_id]]]
+                p_secret_santa_res_id += [[contact[csv_id], foyer_id[csv_id]]]
                 # pop contact in result
-                cp_id_foyer.remove(id)
+                cp_id_foyer.remove(foyer_id)
             # restart because no result found
             else:
                 break
@@ -95,28 +73,27 @@ def secret_santa():
         # Secret Santa finished :)
         if len(cp_id_foyer) == 0:
             secret_santa_finished = True
+    return p_secret_santa_res_id
 
 
-def get_contact_by_id(id_contact):
-    global p_contacts
-    for contact in p_contacts:
+def get_contact_by_id(id_contact, contacts_data):
+    for contact in contacts_data:
         if contact[csv_id] == id_contact:
             return contact
     return []
 
 
-def send_email():
-    global p_contacts, p_secret_santa_res_id, csv_id, csv_foyer, csv_adresse, csv_email, csv_nom, p_email_secret_santa
-
+def send_email(secret_santa_ids, csv_data):
     now = datetime.datetime.now()
 
-    for secret in p_secret_santa_res_id:
-        sender = get_contact_by_id(secret[0])
-        gift_to = get_contact_by_id(secret[1])
+    for secret in secret_santa_ids:
+        sender = get_contact_by_id(secret[0], csv_data)
+        gift_to = get_contact_by_id(secret[1], csv_data)
 
         print("Gift : ")
-        print(sender)
-        print(gift_to)
+        print(f"Sender: {sender[csv_nom]}")
+        print(f"Receiver: {gift_to[csv_nom]}")
+        print()
 
         message = (
             "Salut "
@@ -149,25 +126,23 @@ def main():
     #### MAIN ####
 
     # initialize csv variables
-    open_csv()
-    cut_first_contacts_line()
-    print("CSV")
-    print(p_column_name)
-    print("Contacts")
-    print(p_contacts)
-
+    print("Récupération des données dans le CSV")
+    csv_header, contacts = open_csv()
+    print(csv_header)
+    for contact in contacts:
+        print(contact)
     # get id/foyer
-    get_all_id_foyer()
+    foyer_ids = get_all_id_foyer(contacts)
     print("id/foyer : ")
-    print(p_id_foyer)
+    print(foyer_ids)
 
     # secretsanta algo
-    secret_santa()
+    santa_res_ids = secret_santa(foyer_ids)
     print("\nres id/id gift to")
-    print(p_secret_santa_res_id)
+    print(santa_res_ids)
 
     # print/email creation
-    send_email()
+    send_email(santa_res_ids, contacts)
 
 
 if __name__ == "__main__":
