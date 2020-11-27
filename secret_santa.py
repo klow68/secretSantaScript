@@ -62,12 +62,12 @@ def gift_to_offer(contact, contacts):
 
         # Restart again with a list without this contact
         gift_to_offer(contact, contacts)
-            
+
 
 
 def secret_santa():
     global p_id_foyer, p_secret_santa_res_id, csv_foyer, csv_id
-    
+
     secret_santa_finished = False
 
     while (not secret_santa_finished):
@@ -78,7 +78,7 @@ def secret_santa():
         # for all contact found a contact to offer a gift not in your foyer
         for contact in p_id_foyer: 
             id = gift_to_offer(contact,cp_id_foyer.copy())
-            
+
             # result found
             if id != None:
                 #p_secret_santa_res_id += [[contact, id]]  
@@ -86,9 +86,9 @@ def secret_santa():
                 # pop contact in result
                 cp_id_foyer.remove(id)
             # restart because no result found
-            else :
-                break;
-        
+        else :
+            break;
+
         # Secret Santa finished :)
         if len(cp_id_foyer) == 0:
             secret_santa_finished = True
@@ -134,7 +134,7 @@ def send_email():
 
 
 def main():
-#### MAIN ####
+    #### MAIN ####
 
     # initialize csv variables
     open_csv()
