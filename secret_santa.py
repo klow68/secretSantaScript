@@ -46,8 +46,7 @@ def gift_to_offer(contact, contacts):
 
         # Restart again with a list without this contact
         gift_to_offer(contact, contacts)
-
-
+        
 def secret_santa(foyers):
     secret_santa_finished = False
 
