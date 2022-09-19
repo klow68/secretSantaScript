@@ -59,6 +59,3 @@ class TestSecretSanta:
 
         assert csv_header == self.p_csv_header
         assert contacts[contact_id] == expected
-
-    def test_send_html_email():
-        ...
