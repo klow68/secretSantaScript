@@ -192,7 +192,6 @@ class SecretSanta:
 
     # EMAIL
     def _send_all_emails(self):
-        ...
         email_from = p_properties["email"]["Name"]
         password = p_properties["email"]["Password"]
         smtp = p_properties["email"]["Smtp"]
