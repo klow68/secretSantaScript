@@ -162,7 +162,7 @@ class SecretSanta:
             human.gift_to = self._get_human(res[1])
 
     def spoiler(self):
-        # spoiler alert, run this command to see the result you sheet
+        # spoiler alert, run this command to see the result like a human being
         print(*self.p_participants, sep="\n")
 
     def _get_human(self, id):
