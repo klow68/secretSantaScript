@@ -1,12 +1,18 @@
 # Import
-import csv, random, smtplib, ssl, datetime, email, configparser
+import configparser, csv
+import os
+import random
+
 from typing import List
-import string
 from dataclasses import dataclass
 from enum import IntEnum
 
-# Import the email modules we'll need
-from email.message import EmailMessage
+# EMAIL
+import jinja2
+import smtplib, ssl, datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 
 #### CSV GLOBAL VARIABLES ####
 
@@ -23,9 +29,9 @@ class CSV_COLUMNS(IntEnum):
 class Human:
     id: int
     familly: int
-    name: string
-    email: string
-    address: string
+    name: str
+    email: str
+    address: str
 
     def __str__(self):
         if hasattr(self, "gift_to"):
@@ -33,16 +39,13 @@ class Human:
         return f"{self.name}"
 
 
-# email to send all email
-p_email_secret_santa = "<your@email.com>"
-
 # properties
 p_properties = None
 
 # read the properties file for csv, email... properties
 def set_properties():
     global p_properties
-    config = configparser.ConfigParser()
+    config = configparser.RawConfigParser()
     config.read("./secretSantaScript/resources/properties/properties.properties")
     p_properties = config
     return config
@@ -112,63 +115,17 @@ def secret_santa_algo(foyers):
     return p_secret_santa_res_id
 
 
-"""
-def get_contact_by_id(id_contact, contacts_data):
-    for contact in contacts_data:
-        if contact[CSV_COLUMNS.ID] == id_contact:
-            return contact
-    return []
-
-
-def send_email(secret_santa_ids, csv_data):
-    now = datetime.datetime.now()
-
-    for secret in secret_santa_ids:
-        sender = get_contact_by_id(secret[0], csv_data)
-        gift_to = get_contact_by_id(secret[1], csv_data)
-
-        print("Gift : ")
-        print(f"Sender: {sender[CSV_COLUMNS.NAME]}")
-        print(f"Receiver: {gift_to[CSV_COLUMNS.NAME]}")
-        print()
-
-        message = (
-            "Salut "
-            + sender[CSV_COLUMNS.NAME]
-            + "!\n\nTon Secret Santa de cette annee "
-            + str(now.year)
-            + "\nTu devra donc un cadeau a "
-            + gift_to[CSV_COLUMNS.NAME]
-            + "\n\n--Pere Noel secret"
-        )
-
-        msg = email.message_from_string(message)
-
-        msg["From"] = p_email_secret_santa
-        msg["To"] = sender[CSV_COLUMNS.EMAIL]
-        msg["Subject"] = "Secret Santa"
-
-        # s = smtplib.SMTP("smtp.office365.com", 587)
-        s.ehlo()  # Hostname to send for this command defaults to the fully qualified domain name of the local host.
-        s.starttls()  # Puts connection to SMTP server in TLS mode
-        s.ehlo()
-        s.login(p_email_secret_santa, "<email_password>")
-
-        # TODO seach if encoding in UTF8 is enought
-        s.sendmail(p_email_secret_santa, sender[CSV_COLUMNS.EMAIL], msg.encode("utf8"))
-
-        s.quit()
-"""
-
-
 class SecretSanta:
     p_participants: List[Human] = list()
-    p_contacts: list()
 
     def start(self):
         self._init()
+
         self._parse()
         self._shuffle()
+
+        self._generate_email_by_id()
+        self._send_all_emails()
 
     def _init(self):
         set_properties()
@@ -187,6 +144,7 @@ class SecretSanta:
                 )
             )
 
+    # SECRET SANTA
     # should be done pretier, but it's working
     def _shuffle(self):
         # get id/foyer
@@ -212,13 +170,75 @@ class SecretSanta:
             if participant.id == id:
                 return participant
 
+    # TEMPLATE
     def _generate_email_by_id(self):
-        ...
+        now = datetime.datetime.now()
 
-    def _send_email(self):
-        # TODO
-        # send_email(santa_res_ids, contacts)
+        templateLoader = jinja2.FileSystemLoader(
+            searchpath=p_properties["email"]["TemplateFolder"]
+        )
+        templateEnv = jinja2.Environment(loader=templateLoader)
+        template = templateEnv.get_template(p_properties["email"]["Template"])
+
+        for human in self.p_participants:
+            human.mail = template.render(
+                name=human.name,
+                date=now,
+                adresse=human.gift_to.address,
+                gift_to=human.gift_to.name,
+            )
+
+        return human.mail
+
+    # EMAIL
+    def _send_all_emails(self):
         ...
+        email_from = p_properties["email"]["Name"]
+        password = p_properties["email"]["Password"]
+        smtp = p_properties["email"]["Smtp"]
+        tls_port = p_properties["email"]["Tls_port"]
+        for human in self.p_participants:
+            email_to = human.email
+            self._send_email(email_from, email_to, password, smtp, tls_port, human.mail)
+
+    def _send_email(self, email_from, email_to, password, smtp, tls_port, html):
+
+        # Create a MIMEMultipart class, and set up the From, To, Subject fields
+        email_message = MIMEMultipart("related")
+        email_message["From"] = email_from
+        email_message["To"] = email_to
+        email_message["Subject"] = p_properties["email"]["Subject"]
+
+        # Attach the html doc defined earlier, as a MIMEText html content type to the MIME message
+        email_message.attach(MIMEText(html, "html"))
+
+        email_message.attach(
+            self._get_MIME_image(p_properties["email"]["Image"], "santa")
+        )
+        email_message.attach(
+            self._get_MIME_image(p_properties["email"]["Image2"], "footer")
+        )
+
+        # Convert it as a string
+        email_string = email_message.as_string()
+
+        # Connect to the Gmail SMTP server and Send Email
+        context = ssl.create_default_context()
+        with smtplib.SMTP(smtp, tls_port) as server:
+            server.ehlo()  # Can be omitted
+            server.starttls(context=context)
+            server.ehlo()  # Can be omitted
+            server.login(email_from, password)
+            server.sendmail(email_from, email_to, email_string)
+
+    def _get_MIME_image(self, image, cid: str):
+        with open(image, "rb") as file:
+            image = file.read()
+
+        msgImage = MIMEImage(image)
+        msgImage.add_header("Content-ID", f"<{cid}>")
+        msgImage.add_header("X-Attachment-Id", cid)
+        return msgImage
 
 
 def main():

@@ -18,7 +18,11 @@ class TestSecretSanta:
         properties = set_properties()
         assert "csv" in properties
         assert "email" in properties
-        assert properties["csv"]["FileName"] == "./res/contacts.csv"
+        assert (
+            properties["csv"]["FileName"]
+            == "./secretSantaScript/resources/contacts/contacts.csv"
+        )
+        assert properties["email"]["subject"] == "[Secret Santa] test é%test"
 
     def test_column_order(self):
         assert CSV_COLUMNS.ID == 0
@@ -49,7 +53,12 @@ class TestSecretSanta:
         ],
     )
     def test_read_csv(self, contact_id, expected):
-        csv_header, contacts = read_csv("./res/contacts_test.csv")
+        csv_header, contacts = read_csv(
+            "./secretSantaScript/resources/contacts/contacts_test.csv"
+        )
 
         assert csv_header == self.p_csv_header
         assert contacts[contact_id] == expected
+
+    def test_send_html_email():
+        ...
