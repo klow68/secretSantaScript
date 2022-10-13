@@ -1,5 +1,6 @@
 # Import
 import configparser, csv
+import email
 import os
 import random
 
@@ -172,6 +173,7 @@ class SecretSanta:
 
     # TEMPLATE
     def _generate_email_by_id(self):
+        email_from = p_properties["email"]["Name"]
         now = datetime.datetime.now()
 
         templateLoader = jinja2.FileSystemLoader(
@@ -181,27 +183,18 @@ class SecretSanta:
         template = templateEnv.get_template(p_properties["email"]["Template"])
 
         for human in self.p_participants:
-            human.mail = template.render(
+            human.html = template.render(
                 name=human.name,
                 date=now,
                 adresse=human.gift_to.address,
                 gift_to=human.gift_to.name,
             )
 
-        return human.mail
+            human.mail = self._generate_email_string(
+                email_from, human.email, human.html
+            )
 
-    # EMAIL
-    def _send_all_emails(self):
-        email_from = p_properties["email"]["Name"]
-        password = p_properties["email"]["Password"]
-        smtp = p_properties["email"]["Smtp"]
-        tls_port = p_properties["email"]["Tls_port"]
-        for human in self.p_participants:
-            email_to = human.email
-            self._send_email(email_from, email_to, password, smtp, tls_port, human.mail)
-
-    def _send_email(self, email_from, email_to, password, smtp, tls_port, html):
-
+    def _generate_email_string(self, email_from, email_to, html) -> str:
         # Create a MIMEMultipart class, and set up the From, To, Subject fields
         email_message = MIMEMultipart("related")
         email_message["From"] = email_from
@@ -211,6 +204,8 @@ class SecretSanta:
         # Attach the html doc defined earlier, as a MIMEText html content type to the MIME message
         email_message.attach(MIMEText(html, "html"))
 
+        print("attach images")
+
         email_message.attach(
             self._get_MIME_image(p_properties["email"]["Image"], "santa")
         )
@@ -219,8 +214,14 @@ class SecretSanta:
         )
 
         # Convert it as a string
-        email_string = email_message.as_string()
+        return email_message.as_string()
 
+    # EMAIL
+    def _send_all_emails(self):
+        email_from = p_properties["email"]["Name"]
+        password = p_properties["email"]["Password"]
+        smtp = p_properties["email"]["Smtp"]
+        tls_port = p_properties["email"]["Tls_port"]
         # Connect to the Gmail SMTP server and Send Email
         context = ssl.create_default_context()
         with smtplib.SMTP(smtp, tls_port) as server:
@@ -228,7 +229,12 @@ class SecretSanta:
             server.starttls(context=context)
             server.ehlo()  # Can be omitted
             server.login(email_from, password)
-            server.sendmail(email_from, email_to, email_string)
+
+            print("Start sending emails")
+            for human in self.p_participants:
+                email_to = human.email
+                print("send email to", email_to)
+                server.sendmail(email_from, email_to, human.mail)
 
     def _get_MIME_image(self, image, cid: str):
         with open(image, "rb") as file:
