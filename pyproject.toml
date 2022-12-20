@@ -11,6 +11,8 @@ pdbpp = "^0.10.3"
 Jinja2 = "^3.1.2"
 pre-commit = "^2.20.0"
 black = "^22.10.0"
+pyOpenSSL = "^22.1.0"
+secrets = "^1.0.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.3"

@@ -1,10 +1,9 @@
 # Import
 import configparser, csv
-import email
-import os
 import random
+import secrets
 
-from typing import List
+from typing import Any, List
 from dataclasses import dataclass
 from enum import IntEnum
 
@@ -67,6 +66,16 @@ def get_all_id_foyer(contacts):
     ]
 
 
+def homemade_real_shuffle(contacts: List[Any]) -> List[Any]:
+    l = contacts.copy()
+    rand = []
+    while len(l) != 0:
+        el = secrets.choice(l)
+        rand.append(el)
+        l.remove(el)
+    return rand
+
+
 # function to found a contact to offer a gift
 # return id or -1
 def gift_to_offer(contact, contacts):
@@ -75,7 +84,7 @@ def gift_to_offer(contact, contacts):
         return None
     else:
         # get random contact and remove it from contacts list
-        random.shuffle(contacts)
+        contacts = homemade_real_shuffle(contacts)
         gift_to = contacts.pop()
 
         # if contact found
@@ -126,6 +135,7 @@ class SecretSanta:
         self._shuffle()
 
         self._generate_email_by_id()
+        # self.spoiler()
         self._send_all_emails()
 
     def _init(self):
